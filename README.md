@@ -44,10 +44,10 @@ Before running this script, ensure you have the following:
    ```
 
 ## Usage
-1. **Save the script** as `iam_keys_rotation.ps1`
+1. **Save the script** as `iam_keys_replace.ps1`
 2. **Run the script** in PowerShell:
    ```powershell
-   .\iam_keys_rotation.ps1
+   .\iam_keys_replace.ps1
    ```
 3. The script will:
    - Retrieve IAM users and their access keys
