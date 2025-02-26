@@ -59,9 +59,9 @@ Before running this script, ensure you have the following:
 ### CSV File (`iam_keys_report.csv`)
 The script generates a report with the following columns:
 ```csv
-AccountId,UserName,AccessKeyId,CreateDate(DaysAgo),LastUsed(DaysAgo),Status,KeyState,KeysUpdated
-123456789012,user1,AKIA12345XYZ,120,30,Key older than 90 days,Inactive,Yes
-123456789012,user2,AKIA67890ABC,45,N/A,Recent key,Active,No
+AccountId,UserName,OldAccessKeyId,CreateDate(DaysAgo),LastUsed(DaysAgo),Status,KeyState,NewAccessKeyId,NewSecretAccessKey
+123456789012,user1,AKIA12345XYZ,120,30,Key older than 90 days,Inactive,N/A,N/A
+123456789012,user2,AKIA67890ABC,45,2,Recent key,Active,N/A,N/A
 ```
 
 ## Notes
