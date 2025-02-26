@@ -3,7 +3,7 @@ $outputFile = "iam_keys_report.csv"
 
 # Check if the CSV file exists, if not, create it with headers
 if (!(Test-Path $outputFile)) {
-    "AccountId,UserName,AccessKeyId,CreateDate(DaysAgo),LastUsed(DaysAgo),Status,KeyState,KeysUpdated" | Out-File -FilePath $outputFile -Encoding utf8
+    "AccountId,UserName,OldAccessKeyId,CreateDate(DaysAgo),LastUsed(DaysAgo),Status,KeyState,NewAccessKeyId,NewSecretAccessKey" | Out-File -FilePath $outputFile -Encoding utf8
 }
 
 # Get the AWS Account ID
@@ -31,24 +31,6 @@ foreach ($user in $users) {
         # Calculate the number of days since creation
         $daysSinceCreation = ($currentDate - $createDate).Days
 
-        # Check if the key is older than 90 days
-        if ($createDate -lt $oldDate) {
-            $status = "Key older than 90 days"
-            $keysUpdated = "Yes"
-
-            # Rotate key: create a new one and deactivate the old one
-            Write-Host "Rotating access key for $user..."
-            $newKey = aws iam create-access-key --user-name $user | ConvertFrom-Json
-            $newAccessKeyId = $newKey.AccessKey.AccessKeyId
-
-            # Deactivate the old key
-            aws iam update-access-key --access-key-id $accessKeyId --status Inactive --user-name $user
-            Write-Host "Old key $accessKeyId deactivated."
-        } else {
-            $status = "Recent key"
-            $keysUpdated = "No"
-        }
-
         # Get last used date
         $lastUsedDateRaw = (aws iam get-access-key-last-used --access-key-id $accessKeyId --query "AccessKeyLastUsed.LastUsedDate" --output json | ConvertFrom-Json)
 
@@ -60,8 +42,32 @@ foreach ($user in $users) {
             $daysSinceLastUsed = "N/A"
         }
 
+        # Check if the key was last used more than 90 days ago
+        if (($daysSinceLastUsed -ne "N/A") -and ($daysSinceLastUsed -gt 90)) {
+            Write-Host "Disabling unused key for user: $user"
+            aws iam update-access-key --user-name $user --access-key-id $accessKeyId --status Inactive
+            $keyState = "Inactive"
+        }
+
+        $newAccessKeyId = "N/A"
+        $newSecretAccessKey = "N/A"
+
+        # If the key is still active and older than 90 days, rotate it
+        if ($keyState -eq "Active" -and $daysSinceCreation -gt 90) {
+            Write-Host "Rotating old key for active user: $user"
+
+            # Create a new access key
+            $newKey = aws iam create-access-key --user-name $user | ConvertFrom-Json
+            $newAccessKeyId = $newKey.AccessKey.AccessKeyId
+            $newSecretAccessKey = $newKey.AccessKey.SecretAccessKey
+
+            # Deactivate the old key
+            aws iam update-access-key --user-name $user --access-key-id $accessKeyId --status Inactive
+            $keyState = "Inactive"
+        }
+
         # Append results to CSV
-        "$accountId,$user,$accessKeyId,$daysSinceCreation,$daysSinceLastUsed,$status,$keyState,$keysUpdated" | Out-File -FilePath $outputFile -Append -Encoding utf8
+        "$accountId,$user,$accessKeyId,$daysSinceCreation,$daysSinceLastUsed,Checked,$keyState,$newAccessKeyId,$newSecretAccessKey" | Out-File -FilePath $outputFile -Append -Encoding utf8
     }
 }
 
